@@ -1,109 +1,83 @@
-<div id="top"></div>
+## Using DON-Hosted Secrets in Requests
 
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
+This section walks through using DON (Decentralized Oracle Network)-hosted secrets when making requests in Chainlink Functions. The process follows the official [Chainlink documentation](https://docs.chain.link/chainlink-functions/tutorials/api-use-secrets).
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-<h3 align="center">Smart Contract Examples and Samples</h3>
+### Prerequisites
 
-  <p align="center">
-    <a href="https://github.com/smartcontractkit/smart-contract-examples/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/smartcontractkit/smart-contract-examples/issues">Request Feature</a>
-  </p>
-</div>
+To use this functionality, ensure you have the following setup in your environment:
+- **Ethereum Sepolia RPC URL**: Set as the environment variable `ETHEREUM_SEPOLIA_RPC_URL`.
+- **Private Key**: Set as the environment variable `PRIVATE_KEY`, which will be used to sign transactions.
+- **API Key for Secrets**: For example, an Alpaca API key can be provided as the environment variable `ALPACA_API_KEY`.
+- **Subscription ID**: You must have a valid Chainlink Functions subscription ID on Sepolia.
 
-<!-- TABLE OF CONTENTS -->
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-    </li>
-    <li>
-    <a href="#downloading-a-single-directory">Downloading A Single Directory</a>
-    </li>
-    <li>
-      <a href="#contributing">Contributing</a>
-    </li>
-  </ol>
-</details>
+Ensure these variables are properly set up in a `.env` file.
 
-<!-- ABOUT THE PROJECT -->
+### Code Explanation
 
-## About The Project
+This example demonstrates uploading secrets to the DON and making a request to a Chainlink Functions consumer contract deployed on Ethereum Sepolia.
 
-> **Important Notice**  
-> Please be aware that this repository contains reference and example contracts which may be **unaudited** and could include **hard-coded values**.  
-> Ensure that you review and audit any contracts before using them in production.
+```javascript
+const secrets = { apiKey: process.env.ALPACA_API_KEY };
+const slotIdNumber = 0; // slot ID where to upload the secrets
+const expirationTimeMinutes = 15; // expiration time in minutes of the secrets
 
-This repo contains example and sample projects, each in their own directory.
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-<!-- GETTING STARTED -->
-
-## Getting Started
-
-Each directory within this repo will have a `README.md` that details everything you need to run the sample.
-
-## Downloading A Single Directory
-
-```sh
-# Create a directory, and enter it
-mkdir smart-contract-examples && cd smart-contract-examples
-
-# Initialize a Git repository
-git init
-
-# Add this repository as a remote origin
-git remote add -f origin https://github.com/smartcontractkit/smart-contract-examples/
-
-# Enable the tree check feature
-git config core.sparseCheckout true
-
-# Create the spare-checkout file with the value
-# the directory you wish to download
-#
-# Use the name of the directory as 'REPLACE_ME'
-echo 'REPLACE_ME' >> .git/info/sparse-checkout
-
-## Download with pull
-git pull origin master
+const routerAddress = "0xb83E47C2bC239B3bf370bc41e1459A34b41238D0"; // FunctionsRouter address for Sepolia
+const donId = "fun-ethereum-sepolia-1"; // DON ID for Sepolia
+const gatewayUrls = [
+  "https://01.functions-gateway.testnet.chain.link/",
+  "https://02.functions-gateway.testnet.chain.link/"
+];
 ```
 
-<!-- CONTRIBUTING -->
+The script first encrypts the secrets using the Chainlink toolkit and then uploads them to the DON for secure use during request execution.
 
-## Contributing
+```javascript
+const encryptedSecretsObj = await secretsManager.encryptSecrets(secrets);
+const uploadResult = await secretsManager.uploadEncryptedSecretsToDON({
+  encryptedSecretsHexstring: encryptedSecretsObj.encryptedSecrets,
+  gatewayUrls: gatewayUrls,
+  slotId: slotIdNumber,
+  minutesUntilExpiration: expirationTimeMinutes,
+});
+```
 
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+### Error Encountered
 
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
+While executing the script, the following error occurs:
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+```
+Error: sender not allowlisted
+```
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+This error occurs when trying to upload encrypted secrets to the DON gateways. The full error output is as follows:
 
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
+```bash
+Uploading secret to DON...
+Upload encrypted secret to gateways https://01.functions-gateway.testnet.chain.link/,https://02.functions-gateway.testnet.chain.link/. slotId 0. Expiration in minutes: 15
+Error encountered when attempting to send request to DON gateway URL #1 of 2
+https://01.functions-gateway.testnet.chain.link/:
+{"jsonrpc":"2.0","id":"4133926951","error":{"code":-32600,"message":"sender not allowlisted"}}
+Error encountered when attempting to send request to DON gateway URL #2 of 2
+https://02.functions-gateway.testnet.chain.link/:
+{"jsonrpc":"2.0","id":"3756256295","error":{"code":-32600,"message":"sender not allowlisted"}}
+Error: Failed to send request to any of the DON gateway URLs:
+["https://01.functions-gateway.testnet.chain.link/","https://02.functions-gateway.testnet.chain.link/"]
+```
 
-[contributors-shield]: https://img.shields.io/github/contributors/smartcontractkit/smart-contract-examples.svg?style=for-the-badge
-[contributors-url]: https://github.com/smartcontractkit/smart-contract-examples/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/smartcontractkit/smart-contract-examples.svg?style=for-the-badge
-[forks-url]: https://github.com/smartcontractkit/smart-contract-examples/network/members
-[stars-shield]: https://img.shields.io/github/stars/smartcontractkit/smart-contract-examples.svg?style=for-the-badge
-[stars-url]: https://github.com/smartcontractkit/smart-contract-examples/stargazers
-[issues-shield]: https://img.shields.io/github/issues/smartcontractkit/smart-contract-examples.svg?style=for-the-badge
-[issues-url]: https://github.com/smartcontractkit/smart-contract-examples/issues
+### Troubleshooting Steps
+
+If you encounter the `sender not allowlisted` error, it indicates that the wallet address being used to upload the secrets is not allowlisted to use the Chainlink Functions DON gateways. Here are steps you can take to resolve the issue:
+
+1. **Ensure Wallet Address Is Allowlisted**: To use DON-hosted secrets, the sender (your wallet address) must be allowlisted by Chainlink. You will need to contact the Chainlink team or check the documentation to get your address added to the allowlist for accessing DON gateways.
+
+2. **Check the Correct Network**: Double-check that you're using the correct network and router address for Sepolia. Ensure that `ETHEREUM_SEPOLIA_RPC_URL` points to a valid Sepolia RPC endpoint and that the `routerAddress` and `donId` match the official Chainlink deployment for Sepolia.
+
+3. **Update Dependencies**: Ensure that all necessary dependencies are installed and up-to-date. Specifically, the `@chainlink/functions-toolkit` package should be the latest version. You can update it by running:
+   ```bash
+   npm install @chainlink/functions-toolkit@latest
+   ```
+
+### Next Steps
+
+Currently awaiting for Chainlink support to come back for a solution to the DON allow list issue: 
+https://discord.com/channels/592041321326182401/1080516970765623437/1297074742712336415
